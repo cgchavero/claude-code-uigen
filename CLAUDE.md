@@ -133,27 +133,80 @@ Commands:
 
 ## Database Schema
 
-**Source of Truth:** See `prisma/schema.prisma` for the complete database structure.
+**Source of Truth:** `prisma/schema.prisma`
 
-### Models (Prisma)
+The database schema is defined using Prisma ORM with SQLite as the database provider. Always refer to `prisma/schema.prisma` for the authoritative database structure.
 
-**User**
-- `id` (String, UUID, Primary Key)
-- `email` (String, unique)
-- `password` (String)
-- `createdAt` (DateTime)
-- `updatedAt` (DateTime)
-- **Relations:** One-to-many with Projects
+### Configuration
 
-**Project**
-- `id` (String, UUID, Primary Key)
-- `name` (String)
-- `userId` (String, optional, Foreign Key)
-- `messages` (String, JSON serialized)
-- `data` (String, JSON serialized - file system state)
-- `createdAt` (DateTime)
-- `updatedAt` (DateTime)
-- **Relations:** Many-to-one with User
+**Generator:**
+- Provider: `prisma-client-js`
+- Output: `../src/generated/prisma` (custom Prisma client location)
+
+**Datasource:**
+- Provider: `sqlite`
+- Database file: `prisma/dev.db`
+
+### Models
+
+#### **User Model**
+```prisma
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  projects  Project[]
+}
+```
+
+**Fields:**
+- `id` - String (CUID), Primary Key, auto-generated
+- `email` - String, unique constraint (for login)
+- `password` - String (bcrypt hashed, 10 rounds)
+- `createdAt` - DateTime, auto-set on creation
+- `updatedAt` - DateTime, auto-updated on modification
+- `projects` - Relation to Project model (one-to-many)
+
+#### **Project Model**
+```prisma
+model Project {
+  id        String   @id @default(cuid())
+  name      String
+  userId    String?
+  messages  String   @default("[]")
+  data      String   @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+```
+
+**Fields:**
+- `id` - String (CUID), Primary Key, auto-generated
+- `name` - String, project display name
+- `userId` - String (nullable), foreign key to User
+- `messages` - String (JSON serialized array), chat history, defaults to `"[]"`
+- `data` - String (JSON serialized object), file system state, defaults to `"{}"`
+- `createdAt` - DateTime, auto-set on creation
+- `updatedAt` - DateTime, auto-updated on modification
+- `user` - Relation to User model (many-to-one, optional)
+
+**Relationships:**
+- `userId` is optional (nullable) to support anonymous projects
+- `onDelete: Cascade` - Deleting a user deletes all their projects
+- Projects without `userId` represent anonymous user work
+
+### Key Design Decisions
+
+1. **CUID over UUID** - Uses `cuid()` for shorter, more URL-friendly IDs
+2. **JSON Serialization** - `messages` and `data` stored as JSON strings in SQLite
+3. **Optional User Relation** - Projects can exist without a user (anonymous mode)
+4. **Cascade Delete** - User deletion automatically cleans up projects
+5. **Default Values** - Empty arrays/objects prevent null handling complexity
 
 ---
 
