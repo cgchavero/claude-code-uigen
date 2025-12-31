@@ -65,7 +65,7 @@ test("MessageList renders messages with parts", () => {
           type: "tool-invocation",
           toolInvocation: {
             toolCallId: "asdf",
-            args: {},
+            args: { command: "create", path: "test.txt" },
             toolName: "str_replace_editor",
             state: "result",
             result: "Success",
@@ -75,10 +75,14 @@ test("MessageList renders messages with parts", () => {
     },
   ];
 
-  render(<MessageList messages={messages} />);
+  const { container } = render(<MessageList messages={messages} />);
 
   expect(screen.getByText("Creating your component...")).toBeDefined();
-  expect(screen.getByText("str_replace_editor")).toBeDefined();
+  
+  // Now expects user-friendly message instead of technical tool name
+  const toolBadge = container.querySelector('[role="status"]');
+  expect(toolBadge?.textContent).toContain("Creating");
+  expect(toolBadge?.textContent).toContain("test.txt");
 });
 
 test("MessageList shows content for assistant message with content", () => {
